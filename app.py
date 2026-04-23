@@ -1,9 +1,11 @@
 import streamlit as st
 from datetime import datetime
 import pandas as pd
+import time
 
 # --- CONFIGURATION ---
-TARGET_DATETIME = "2026-05-01T00:00:00"
+# Setting the target to May 1st, 2026
+TARGET_DATE = pd.Timestamp("2026-05-01 00:00:00").tz_localize('Asia/Kolkata')
 TITLE = "Milte hain bahut jaldi!🫶"
 VALID_USER = "Nanugolu"
 VALID_PASS = "2201200403092004"
@@ -11,14 +13,12 @@ VALID_PASS = "2201200403092004"
 def check_password():
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
-
     if st.session_state["authenticated"]:
         return True
 
     st.title("🔒 Private Access")
-    # Using unique keys to prevent Streamlit widget errors
-    user_input = st.text_input("User ID", key="user_login_final")
-    pass_input = st.text_input("Password", type="password", key="pass_login_final")
+    user_input = st.text_input("User ID", key="user_login")
+    pass_input = st.text_input("Password", type="password", key="pass_login")
     
     if st.button("Login"):
         if user_input == VALID_USER and pass_input == VALID_PASS:
@@ -31,76 +31,57 @@ def check_password():
 def show_timer():
     st.set_page_config(page_title="Countdown", layout="centered")
     
-    # CSS to make it look beautiful on Android
+    # CSS for the UI
     st.markdown("""
         <style>
         .timer-card {
             background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
-            padding: 30px;
-            border-radius: 20px;
+            padding: 40px;
+            border-radius: 25px;
             color: #4a4a4a;
             text-align: center;
-            box-shadow: 0px 10px 25px rgba(0,0,0,0.1);
-            margin-top: 20px;
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.1);
         }
-        .title { font-size: 24px; font-weight: bold; margin-bottom: 15px; }
-        #live-timer {
-            font-size: 38px;
-            font-weight: 800;
-            color: #ff5e62;
-            font-family: 'monospace';
-            background: rgba(255,255,255,0.3);
-            padding: 10px;
-            border-radius: 10px;
-        }
-        .footer-label { font-size: 16px; margin-top: 15px; opacity: 0.8; }
+        .title { font-size: 28px; font-weight: bold; margin-bottom: 20px; }
+        .time-display { font-size: 40px; font-weight: 800; color: #ff5e62; font-family: monospace; }
         </style>
     """, unsafe_allow_html=True)
 
-    # The HTML and the Live Script
-    st.markdown(f"""
-        <div class="timer-card">
-            <div class="title">{TITLE}</div>
-            <div id="live-timer">00:00:00:00</div>
-            <div class="footer-label">until May 01, 2026</div>
-        </div>
+    # This container will be updated every second
+    placeholder = st.empty()
 
-        <script>
-        function startCountdown() {{
-            const target = new Date("{TARGET_DATETIME}").getTime();
-            
-            const timerInterval = setInterval(function() {{
-                // Get current time in IST
-                const nowUTC = new Date().getTime();
-                const offset = 5.5 * 60 * 60 * 1000; // IST is UTC+5.5
-                const nowIST = nowUTC + (new Date().getTimezoneOffset() * 60000) + offset;
-                
-                const diff = target - nowIST;
+    while True:
+        # Get current time in India
+        now = pd.Timestamp.now(tz='Asia/Kolkata')
+        diff = TARGET_DATE - now
 
-                if (diff <= 0) {{
-                    document.getElementById("live-timer").innerHTML = "00:00:00:00";
-                    clearInterval(timerInterval);
-                    return;
-                }}
+        if diff.total_seconds() <= 0:
+            placeholder.markdown(f"""
+                <div class="timer-card">
+                    <div class="title">{TITLE}</div>
+                    <div class="time-display">The Wait is Over! ❤️</div>
+                </div>
+            """, unsafe_allow_html=True)
+            break
+        
+        # Math to get Days, Hours, Minutes, Seconds
+        days = diff.days
+        hours, remainder = divmod(diff.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
 
-                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-                // Add leading zeros for a cleaner look
-                const display = 
-                    (d < 10 ? "0"+d : d) + "d " + 
-                    (h < 10 ? "0"+h : h) + "h " + 
-                    (m < 10 ? "0"+m : m) + "m " + 
-                    (s < 10 ? "0"+s : s) + "s";
-                
-                document.getElementById("live-timer").innerHTML = display;
-            }}, 1000);
-        }}
-        startCountdown();
-        </script>
-    """, unsafe_allow_html=True)
+        # Update the display
+        placeholder.markdown(f"""
+            <div class="timer-card">
+                <div class="title">{TITLE}</div>
+                <div class="time-display">
+                    {days}d {hours:02d}h {minutes:02d}m {seconds:02d}s
+                </div>
+                <div style="margin-top:10px; opacity:0.7;">until May 01, 2026</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Wait 1 second before the next update
+        time.sleep(1)
 
 if __name__ == "__main__":
     if check_password():
